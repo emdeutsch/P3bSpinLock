@@ -532,3 +532,5 @@ procdump(void)
     cprintf("\n");
   }
 }
+int clone(void){}
+int join(void){}
