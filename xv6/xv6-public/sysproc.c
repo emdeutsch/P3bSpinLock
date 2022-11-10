@@ -92,9 +92,9 @@ sys_uptime(void)
 
 int 
 sys_clone(void){
-
+return 0;
 }
 int 
 sys_join(void){
-
+return 0;
 }
