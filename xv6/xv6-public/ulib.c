@@ -3,7 +3,11 @@
 #include "fcntl.h"
 #include "user.h"
 #include "x86.h"
+#include "mmu.h"
 
+typedef struct __lock_t {
+  int flag;
+} lock_t;
 char*
 strcpy(char *s, const char *t)
 {
@@ -104,13 +108,34 @@ memmove(void *vdst, const void *vsrc, int n)
     *dst++ = *src++;
   return vdst;
 }
-void 
-lock_init(lock_t *){
+int TestAndSet(int *oldpointer, int new){
+  int old = *oldpointer;
+  *oldpointer = new;
+  return old;
 }
 void 
-lock_acquire(lock_t *){}
+lock_init(lock_t *lock){
+  lock->flag = 0;
+}
 void 
-lock_release(lock_t *){}
+lock_acquire(lock_t *lock){
+  while(TestAndSet(&lock->flag, 1)==1)
+    ;
+}
+void 
+lock_release(lock_t *lock){
+  lock->flag =0;
+}
 int 
 thread_create(void (*start_routine)(void *, void *), void *arg1, void *arg2){
+    void *stack;
+    stack = malloc(PGSIZE);
+    return clone(start_routine, arg1, arg2, stack);
+}
+int 
+thread_join(){
+  void *stack;
+  int waitedForPID = join(&stack);
+  free(stack);
+  return waitedforPID;
 }
