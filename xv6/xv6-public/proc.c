@@ -532,7 +532,7 @@ procdump(void)
     cprintf("\n");
   }
 }
-int clone(void){
+int clone(void(*fcn)(void *, void *), void *arg1, void *arg2, void *stack){
   int i, pid;
   struct proc *np;
   struct proc *curproc = myproc();
@@ -548,9 +548,14 @@ int clone(void){
   *np->tf = *curproc->tf;
   np->pgdir = curproc->pgdir;
   
+  //create space for stack
+  //put first argument onto stack
+  //put second argument onto the stack
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
+  np->tf->eip = (uint)fcn;
+  np->tf->esp = (uint)stack;
 
   for(i = 0; i < NOFILE; i++)
     if(curproc->ofile[i])
@@ -569,8 +574,8 @@ int clone(void){
 
   return pid;
 }
-int join(void){
-  void **stack;
+int join(void **stack){
+
    if(argptr(0, (void*)&stack, 2*sizeof(stack[0])) < 0)
     return -1;
   //go through p table and each state is zombie or not if zombie then kill it reset everything to zero
@@ -583,7 +588,7 @@ int join(void){
     // Scan through table looking for exited children.
     havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->parent != curproc)
+      if(p->parent != curproc || p->pgdir != p->parent->pgdir)
         continue;
       havekids = 1;
       if(p->state == ZOMBIE){

@@ -137,5 +137,5 @@ thread_join(){
   void *stack;
   int waitedForPID = join(&stack);
   free(stack);
-  return waitedforPID;
+  return waitedForPID;
 }
