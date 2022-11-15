@@ -1,6 +1,28 @@
 struct stat;
 struct rtcdate;
-struct __lock_t;
+typedef struct {
+  int flag;
+} lock_t;
+
+/*enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+
+struct proc {
+  uint sz;                     // Size of process memory (bytes)
+  pde_t* pgdir;                // Page table
+  char *kstack;                // Bottom of kernel stack for this process
+  enum procstate state;        // Process state
+  int pid;                     // Process ID
+  struct proc *parent;         // Parent process
+  struct trapframe *tf;        // Trap frame for current syscall
+  struct context *context;     // swtch() here to run process
+  void *chan;                  // If non-zero, sleeping on chan
+  int killed;                  // If non-zero, have been killed
+  struct file *ofile[NOFILE];  // Open files
+  struct inode *cwd;           // Current directory
+  char name[16];               // Process name (debugging)
+  void *nstack;
+  int count;
+};*/
 
 // system calls
 int fork(void);
@@ -41,7 +63,9 @@ void* malloc(uint);
 void free(void*);
 int atoi(const char*);
 int thread_create(void (*start_routine)(void *, void *), void *arg1, void *arg2);
-void lock_acquire(struct __lock_t*);
-void lock_release(struct __lock_t*);
-void lock_init(struct __lock_t*);
+void lock_acquire(lock_t*);
+void lock_release(lock_t*);
+void lock_init(lock_t*);
+int thread_join();
+struct proc* myproc();
 

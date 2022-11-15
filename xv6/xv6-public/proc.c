@@ -7,6 +7,8 @@
 #include "proc.h"
 #include "spinlock.h"
 
+int count = 0;
+
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -541,21 +543,24 @@ int clone(void(*fcn)(void *, void *), void *arg1, void *arg2, void *stack){
   if((np = allocproc()) == 0){
     return -1;
   }
-  //if(np->)//stack aline and one page
 
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
   np->pgdir = curproc->pgdir;
   
-  //create space for stack
-  //put first argument onto stack
-  //put second argument onto the stack
+  *(uint*)(stack + PGSIZE - 4) = (uint)arg1;
+  *(uint*)(stack + PGSIZE) = (uint)arg2;
+  *(uint*)(stack + PGSIZE - 8) = 0xFFFF; 
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
   np->tf->eip = (uint)fcn;
-  np->tf->esp = (uint)stack;
+  np->tf->esp = (uint)(stack + PGSIZE - 12);
+  np->tf->ebp = (uint)(stack + PGSIZE - 12);
+
+  np->count = count;
+  count += 1;
 
   for(i = 0; i < NOFILE; i++)
     if(curproc->ofile[i])
@@ -595,13 +600,14 @@ int join(void **stack){
         // Found one.
         pid = p->pid;
         kfree(p->kstack);
-        p->kstack = *stack; //not sure if this is right
+        p->kstack = 0; //not sure if this is right
         freevm(p->pgdir);
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
+        p->nstack = *stack;
         release(&ptable.lock);
         return pid;
       }
