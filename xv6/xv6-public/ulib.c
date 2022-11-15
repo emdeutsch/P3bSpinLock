@@ -145,8 +145,8 @@ thread_create(void (*start_routine)(void *, void *), void *arg1, void *arg2){
 int 
 thread_join(){
   void *newStack;
-  int waitedForPID = join(&newStack);
+  int pid = join(&newStack);
   void *stack = *(void**)(newStack-sizeof(uint));
   free(stack);
-  return waitedForPID;
+  return pid;
 }

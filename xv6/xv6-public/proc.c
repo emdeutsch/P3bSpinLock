@@ -544,13 +544,12 @@ int clone(void(*fcn)(void *, void *), void *arg1, void *arg2, void *stack){
   if((np = allocproc()) == 0){
     return -1;
   }
-  if(stack - curproc->nstack != 0){
-    return -1;
-  }
+
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
   np->pgdir = curproc->pgdir;
+  np->nstack = stack;
   
    
   *(uint*)(stack + PGSIZE - 3 * sizeof(void*))  = 0xFFFF;
@@ -615,7 +614,10 @@ int join(void **stack){
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
-        p->nstack = *stack;
+
+        stack = p->nstack;
+        p->nstack = 0;
+
         release(&ptable.lock);
         return pid;
       }
