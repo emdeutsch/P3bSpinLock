@@ -67,5 +67,5 @@ void lock_acquire(lock_t*);
 void lock_release(lock_t*);
 void lock_init(lock_t*);
 int thread_join();
-struct proc* myproc();
+//struct proc* myproc();
 
