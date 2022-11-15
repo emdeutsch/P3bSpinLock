@@ -5,10 +5,6 @@
 #include "x86.h"
 #include "mmu.h"
 
-void *originalStack[64];
-int counts=0;
-lock_t lock;
-
 char*
 strcpy(char *s, const char *t)
 {
@@ -130,24 +126,27 @@ lock_release(lock_t *lock){
 int 
 thread_create(void (*start_routine)(void *, void *), void *arg1, void *arg2){
     void *stack;
-    stack = malloc(PGSIZE*2);
-    lock_acquire(&lock);
-    originalStack[counts] = stack;
-    counts += 1;
+    void *oldstack;
+    stack = malloc(PGSIZE*2 + sizeof(uint));
+    oldstack = stack;
     while((int)stack % PGSIZE !=0){
       stack += 1;
     }
+    *(uint*)stack = (uint)oldstack;
+    stack += sizeof(uint);
+   /* int extra;
+    extra = (int)stack % PGSIZE;
+    newstack = stack + PGSIZE - extra;*/
 
     int pid = clone(start_routine, arg1, arg2, stack);
-    lock_release(&lock);
+ 
     return pid;
 }
 int 
 thread_join(){
-   struct proc *p = myproc();
-  int temp = p->count;
-  int waitedForPID = join(&originalStack[temp]);
-  // Need to do pointer arithmatic on stack pointer to find address that allows us to free what we malloc in thread_create
-  free(originalStack);
+  void *newStack;
+  int waitedForPID = join(&newStack);
+  void *stack = *(void**)(newStack-sizeof(uint));
+  free(stack);
   return waitedForPID;
 }

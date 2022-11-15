@@ -297,6 +297,7 @@ wait(void)
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
+        p->nstack = 0; //maybe?
         release(&ptable.lock);
         return pid;
       }
@@ -543,24 +544,31 @@ int clone(void(*fcn)(void *, void *), void *arg1, void *arg2, void *stack){
   if((np = allocproc()) == 0){
     return -1;
   }
-
+  if(stack - curproc->nstack != 0){
+    return -1;
+  }
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
   np->pgdir = curproc->pgdir;
   
-  *(uint*)(stack + PGSIZE - 4) = (uint)arg1;
+   
+  *(uint*)(stack + PGSIZE - 3 * sizeof(void*))  = 0xFFFF;
+  *(uint*)(stack + PGSIZE - 2 * sizeof(void*)) = (uint)arg2;
+  *(uint*)(stack + PGSIZE - 1 * sizeof(void*)) = (uint)arg1;
+ 
+  /**(uint*)(stack + PGSIZE - 4) = (uint)arg1;
   *(uint*)(stack + PGSIZE) = (uint)arg2;
-  *(uint*)(stack + PGSIZE - 8) = 0xFFFF; 
+  *(uint*)(stack + PGSIZE - 8) = 0xFFFF; */
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
   np->tf->eip = (uint)fcn;
-  np->tf->esp = (uint)(stack + PGSIZE - 12);
-  np->tf->ebp = (uint)(stack + PGSIZE - 12);
+  np->tf->esp = (uint)(stack + PGSIZE - 3);
+  np->tf->ebp = np->tf->esp;//(uint)(stack + PGSIZE - 3);
 
-  np->count = count;
-  count += 1;
+ // np->count = count;
+  //count += 1;
 
   for(i = 0; i < NOFILE; i++)
     if(curproc->ofile[i])
