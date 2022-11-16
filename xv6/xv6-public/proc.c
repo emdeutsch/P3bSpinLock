@@ -172,6 +172,12 @@ growproc(int n)
       return -1;
   }
   curproc->sz = sz;
+  acquire(&ptable.lock);
+  for(struct proc *p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->pgdir == p->parent->pgdir)
+        p->sz = sz;
+  }
+  release(&ptable.lock);
   switchuvm(curproc);
   return 0;
 }
@@ -256,7 +262,7 @@ exit(void)
 
   // Pass abandoned children to init.
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->parent == curproc){
+    if(p->parent == curproc && p->pgdir == p->parent->pgdir){
       p->parent = initproc;
       if(p->state == ZOMBIE)
         wakeup1(initproc);
@@ -283,7 +289,7 @@ wait(void)
     // Scan through table looking for exited children.
     havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->parent != curproc)
+      if(p->parent != curproc || p->pgdir == p->parent->pgdir)
         continue;
       havekids = 1;
       if(p->state == ZOMBIE){
@@ -297,7 +303,7 @@ wait(void)
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
-        p->nstack = 0; //maybe?
+     //  p->nstack = 0; //maybe?
         release(&ptable.lock);
         return pid;
       }
@@ -544,31 +550,32 @@ int clone(void(*fcn)(void *, void *), void *arg1, void *arg2, void *stack){
   if((np = allocproc()) == 0){
     return -1;
   }
+  if((uint)stack % PGSIZE !=0){
+    return -1;
+  }
+  
+  if((uint)stack + PGSIZE >  curproc->sz){
+      return -1;
+   }
 
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
   np->pgdir = curproc->pgdir;
   np->nstack = stack;
-  
-   
-  *(uint*)(stack + PGSIZE - 3 * sizeof(void*))  = 0xFFFF;
-  *(uint*)(stack + PGSIZE - 2 * sizeof(void*)) = (uint)arg2;
-  *(uint*)(stack + PGSIZE - 1 * sizeof(void*)) = (uint)arg1;
- 
-  /**(uint*)(stack + PGSIZE - 4) = (uint)arg1;
-  *(uint*)(stack + PGSIZE) = (uint)arg2;
-  *(uint*)(stack + PGSIZE - 8) = 0xFFFF; */
+
+  void* mem;
+  //cprintf("size %d\n", sizeof(void*));
+  mem = (void*) 0xffffffff;
+   memmove(stack + PGSIZE - 3 * sizeof(void*), &mem, sizeof(void*));
+   memmove(stack + PGSIZE - 2 * sizeof(void*), &arg1, sizeof(void*));
+   memmove(stack + PGSIZE - 1 * sizeof(void*), &arg2, sizeof(void*));
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
   np->tf->eip = (uint)fcn;
-  np->tf->esp = (uint)(stack + PGSIZE - 3);
-  np->tf->ebp = np->tf->esp;//(uint)(stack + PGSIZE - 3);
-
- // np->count = count;
-  //count += 1;
-
+  np->tf->esp = (uint)(stack + PGSIZE - (3 *sizeof(void*)));
+ 
   for(i = 0; i < NOFILE; i++)
     if(curproc->ofile[i])
       np->ofile[i] = filedup(curproc->ofile[i]);
@@ -588,8 +595,7 @@ int clone(void(*fcn)(void *, void *), void *arg1, void *arg2, void *stack){
 }
 int join(void **stack){
 
-   if(argptr(0, (void*)&stack, 2*sizeof(stack[0])) < 0)
-    return -1;
+ 
   //go through p table and each state is zombie or not if zombie then kill it reset everything to zero
   struct proc *p;
   int havekids, pid;
@@ -608,14 +614,14 @@ int join(void **stack){
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0; //not sure if this is right
-        freevm(p->pgdir);
+      //  freevm(p->pgdir);
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
 
-        stack = p->nstack;
+        *stack = p->nstack;
         p->nstack = 0;
 
         release(&ptable.lock);

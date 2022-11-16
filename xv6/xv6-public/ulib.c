@@ -5,6 +5,7 @@
 #include "x86.h"
 #include "mmu.h"
 
+
 char*
 strcpy(char *s, const char *t)
 {
@@ -129,11 +130,12 @@ thread_create(void (*start_routine)(void *, void *), void *arg1, void *arg2){
     void *oldstack;
     stack = malloc(PGSIZE*2 + sizeof(uint));
     oldstack = stack;
-    while((int)stack % PGSIZE !=0){
+    stack += sizeof(uint);
+    while((uint)stack % PGSIZE !=0){
       stack += 1;
     }
-    *(uint*)stack = (uint)oldstack;
-    stack += sizeof(uint);
+    *(uint*)(stack - sizeof(uint)) = (uint)oldstack;
+    
    /* int extra;
     extra = (int)stack % PGSIZE;
     newstack = stack + PGSIZE - extra;*/
