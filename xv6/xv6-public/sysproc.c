@@ -92,20 +92,20 @@ sys_uptime(void)
 
 int 
 sys_clone(void){
-  int fcn;
-  int arg1, arg2, stack;
-  if(argint(0, &fcn) < 0 || argint(0, &arg1) < 0 || argint(0, &arg2) < 0 || argint(0, &stack) < 0){
+  void* fcn;
+  void* arg1;
+  void* arg2;
+  void* stack;
+  if(argptr(0, (void*)&fcn, sizeof(fcn)) < 0 || argptr(1, (void*)&arg1, sizeof(arg1)) < 0 || argptr(2, (void*)&arg2, sizeof(arg2)) < 0 || argptr(3, (void*)&stack, sizeof(stack)) < 0){
     return -1;
   }
+  
   return clone((void*)fcn, (void*) arg1, (void *)arg2, (void*)stack);
 }
 int 
 sys_join(void){
   void **stack; 
-  int stackLoc;
-  if(argint(0, &stackLoc)< 0){
+  if(argptr(0, (void*)&stack, sizeof(stack)) < 0)
     return -1;
-  }
-  stack = (void **)stackLoc;
   return join(stack);
 }
